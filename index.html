@@ -531,6 +531,7 @@
     <h1>Vörstetten ↔ Freiburg<br><span>ÖPNV + Park & Ride</span></h1>
   </div>
   <div class="time-badge" id="clock">--:--</div>
+  <button onclick="showKeyModal()" title="API Key ändern" style="background:none;border:none;color:#64748b;font-size:18px;cursor:pointer;padding:0 0 0 8px;line-height:1;">⚙️</button>
 </header>
 
 <!-- iOS install hint (shown only in Safari, not in standalone mode) -->
@@ -607,6 +608,47 @@
   <div class="bottom-spacer"></div>
 </main>
 
+<!-- API KEY MODAL -->
+<div id="key-modal" style="
+  display:none; position:fixed; inset:0; z-index:200;
+  background:rgba(0,0,0,0.85); backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  align-items:center; justify-content:center; padding:24px;">
+  <div style="
+    background:#161b26; border:1px solid #2a3448;
+    border-radius:16px; padding:28px 24px; max-width:380px; width:100%;">
+    <div style="font-size:32px; text-align:center; margin-bottom:12px;">🔑</div>
+    <h2 style="font-family:'IBM Plex Mono',monospace; font-size:15px; color:#e2e8f0; margin-bottom:8px; text-align:center;">Anthropic API Key</h2>
+    <p style="font-size:12px; color:#64748b; line-height:1.7; margin-bottom:20px; text-align:center;">
+      Einmalig eingeben – wird nur lokal auf deinem Gerät gespeichert.<br>
+      Key findest du auf <strong style="color:#3b82f6">console.anthropic.com</strong>
+    </p>
+    <input id="key-input" type="password"
+      placeholder="sk-ant-..."
+      style="
+        width:100%; background:#1e2535; border:1px solid #2a3448;
+        color:#e2e8f0; font-family:'IBM Plex Mono',monospace;
+        font-size:13px; padding:12px 14px; border-radius:8px;
+        outline:none; margin-bottom:12px;
+        -webkit-appearance:none;">
+    <button onclick="saveKey()" style="
+      width:100%; background:#3b82f6; color:#fff; border:none;
+      padding:14px; border-radius:8px; font-family:'IBM Plex Mono',monospace;
+      font-size:13px; font-weight:600; cursor:pointer; margin-bottom:8px;">
+      Speichern & weiter
+    </button>
+    <button onclick="document.getElementById('key-modal').style.display='none'" style="
+      width:100%; background:transparent; color:#64748b; border:1px solid #2a3448;
+      padding:10px; border-radius:8px; font-family:'IBM Plex Mono',monospace;
+      font-size:12px; cursor:pointer;">
+      Abbrechen
+    </button>
+    <p style="font-size:10px; color:#64748b; text-align:center; line-height:1.5; margin-top:10px;">
+      Der Key wird nur im lokalen Browser-Speicher gesichert und nie anderweitig übertragen.
+    </p>
+  </div>
+</div>
+
 <script>
 // =================== PWA INSTALL BANNER ===================
 // Hide banner if already installed as PWA (standalone mode)
@@ -633,6 +675,34 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
   });
 }
+
+
+// =================== API KEY MANAGEMENT ===================
+function getApiKey() {
+  return localStorage.getItem('anthropic-key') || '';
+}
+
+function showKeyModal() {
+  const modal = document.getElementById('key-modal');
+  modal.style.display = 'flex';
+  setTimeout(() => document.getElementById('key-input').focus(), 100);
+}
+
+function saveKey() {
+  const val = document.getElementById('key-input').value.trim();
+  if (!val.startsWith('sk-ant-')) {
+    alert('Bitte einen gültigen Anthropic API Key eingeben (beginnt mit sk-ant-)');
+    return;
+  }
+  localStorage.setItem('anthropic-key', val);
+  document.getElementById('key-modal').style.display = 'none';
+  document.getElementById('key-input').value = '';
+}
+
+// Check on load
+window.addEventListener('load', () => {
+  if (!getApiKey()) showKeyModal();
+});
 
 // =================== STATE ===================
 let direction = 'from';
@@ -675,6 +745,7 @@ async function doSearch() {
   const time = document.getElementById('inp-time').value;
   const mode = document.getElementById('inp-mode').value;
 
+  if (!getApiKey()) { showKeyModal(); return; }
   if (!date || !time) { alert('Bitte Datum und Uhrzeit eingeben.'); return; }
 
   const btn = document.getElementById('search-btn');
@@ -744,7 +815,11 @@ Gib NUR valides JSON zurück, ohne Text, ohne Backticks:
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': getApiKey(),
+        'anthropic-version': '2023-06-01'
+      },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 2500,

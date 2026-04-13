@@ -818,8 +818,7 @@ Gib NUR valides JSON zurück, ohne Text, ohne Backticks:
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': getApiKey(),
-        'anthropic-version': '2023-06-01'
+        'x-api-key': getApiKey()
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
